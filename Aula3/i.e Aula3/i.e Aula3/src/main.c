@@ -422,7 +422,7 @@ int main(void)
 		}
 
 		/* Wait for 500ms */
-		mdelay(500);
+		mdelay(1000);
 	}
 //! [main_step_loop]
 }
