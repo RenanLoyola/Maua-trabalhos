@@ -1,0 +1,1 @@
+o erro e que a funcao deve ter variaveis globais ao invez de variaveis locais para que funcione corretamente , pois o ponteiro ira perder o valor caso a variavel seja local
