@@ -81,8 +81,8 @@ int main (void)
 	// 		1 : Sets the data to be driven on the I/O line.
 	// 		0 : do nothing
 	//PIOA->PIO_SODR = (1 << PIN_LED_BLUE );
-// implementacao do PIO_CODR
-PIOA ->PIO_CODR = (1 << PIN_LED_BLUE) ; 
+	// implementacao do PIO_CODR
+	 
 	/**
 	*	Loop infinito
 	*/
@@ -92,7 +92,10 @@ PIOA ->PIO_CODR = (1 << PIN_LED_BLUE) ;
              * Utilize a função delay_ms para fazer o led piscar na frequência
              * escolhida por você.
              */
-            //delay_ms();
+			PIOA->PIO_SODR = (1 << PIN_LED_BLUE );
+            delay_ms(500);
+			PIOA ->PIO_CODR = (1 << PIN_LED_BLUE) ;
+			delay_ms(500);
 		
 	}
 }
