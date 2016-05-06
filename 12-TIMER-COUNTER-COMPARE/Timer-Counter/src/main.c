@@ -27,7 +27,7 @@
 #define PIN_PUSHBUTTON_1_PIO	PIOB
 #define PIN_PUSHBUTTON_1_ID		ID_PIOB
 #define PIN_PUSHBUTTON_1_TYPE	PIO_INPUT
-#define PIN_PUSHBUTTON_1_ATTR	PIO_PULLUP | PIO_DEBOUNCE | PIO_IT_RISE_EDGE
+#define PIN_PUSHBUTTON_1_ATTR	PIO_PULLUP | PIO_DEBOUNCE | PIO_IT_FALL_EDGE
 
 #define PIN_PUSHBUTTON_2_MASK	PIO_PC12
 #define PIN_PUSHBUTTON_2_PIO	PIOC
@@ -45,7 +45,9 @@
  */
 static void Button1_Handler(uint32_t id, uint32_t mask)
 {
-	
+
+	tc_write_rc(TC0,0, tc_read_rc(TC0,0)*0.9);
+
 }
 
 /**
@@ -53,7 +55,7 @@ static void Button1_Handler(uint32_t id, uint32_t mask)
  */
 static void Button2_Handler(uint32_t id, uint32_t mask)
 {
-	
+	tc_write_rc(TC0,0, tc_read_rc(TC0,0)*1.1);
 }
 
 /**
@@ -72,7 +74,12 @@ void TC0_Handler(void)
 	UNUSED(ul_dummy);
 
 	/** Muda o estado do LED */
-
+	if(pio_get(PIOA,PIO_OUTPUT_0,PIN_LED_BLUE_MASK)){
+		pio_clear(PIOA,PIN_LED_BLUE_MASK);
+	}else
+	{
+		pio_set(PIOA,PIN_LED_BLUE_MASK);
+	}
 }
 
 /**
@@ -83,7 +90,45 @@ void TC0_Handler(void)
  */
 static void configure_buttons(void)
 {
+	pmc_enable_periph_clk(PIN_PUSHBUTTON_1_ID);
+	pmc_enable_periph_clk(PIN_PUSHBUTTON_2_ID);
 
+	/**
+	* Configura entrada
+	*/ 
+	pio_set_input(PIN_PUSHBUTTON_1_PIO,PIN_PUSHBUTTON_1_MASK , PIO_PULLUP | PIO_DEBOUNCE);
+	pio_set_input(PIN_PUSHBUTTON_2_PIO,PIN_PUSHBUTTON_2_MASK , PIO_PULLUP | PIO_DEBOUNCE);
+
+	/*
+	 * Configura divisor do clock para debounce
+	 */
+	pio_set_debounce_filter(PIN_PUSHBUTTON_1_PIO,PIN_PUSHBUTTON_1_MASK ,20);
+	pio_set_debounce_filter(PIN_PUSHBUTTON_2_PIO,PIN_PUSHBUTTON_2_MASK ,20);
+	
+	/* 
+	*	Configura interrupção para acontecer em borda de descida.
+	*/
+	pio_handler_set(PIN_PUSHBUTTON_1_PIO,PIN_PUSHBUTTON_1_ID,PIN_PUSHBUTTON_1_MASK ,PIN_PUSHBUTTON_1_ATTR ,Button1_Handler);
+	pio_handler_set(PIN_PUSHBUTTON_2_PIO,PIN_PUSHBUTTON_2_ID,PIN_PUSHBUTTON_2_MASK ,PIN_PUSHBUTTON_2_ATTR ,Button2_Handler);
+	
+				
+	/*
+	*	Ativa interrupção no periférico B porta do botão
+	*/	
+	pio_enable_interrupt(PIN_PUSHBUTTON_1_PIO,PIN_PUSHBUTTON_1_MASK);
+	pio_enable_interrupt(PIN_PUSHBUTTON_2_PIO,PIN_PUSHBUTTON_2_MASK);
+	
+	/*
+	*	Configura a prioridade da interrupção no pORTB
+	*/
+	NVIC_SetPriority(ID_PIOB,2);
+	NVIC_SetPriority(ID_PIOC,2);
+	
+	/*
+	*	Ativa interrupção no port B
+	*/
+	NVIC_EnableIRQ(ID_PIOB);
+	NVIC_EnableIRQ(ID_PIOC);
 }
 
 /**
@@ -209,7 +254,7 @@ static void configure_tc(void)
 	*	        TC_IER_LDRBS : 	RB Loading 
 	*	        TC_IER_ETRGS : 	External Trigger 
 	*****************************************************************/
-	/tc_enable_interrupt(TC0,0,TC_IER_CPCS);
+	tc_enable_interrupt(TC0,0,TC_IER_CPCS);
     
     /*****************************************************************
 	* Ativar interrupção no NVIC
