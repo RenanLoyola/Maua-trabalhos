@@ -209,6 +209,7 @@ void configure_adc(void)
 	/* Enable PDC channel interrupt. */
 	adc_enable_interrupt(ADC, ADC_ISR_EOC5);
 }
+
 static void configure_tc(void)
 {
 	uint32_t ul_sysclk = sysclk_get_cpu_hz();
