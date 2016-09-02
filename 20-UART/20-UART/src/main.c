@@ -13,6 +13,7 @@
 #include "asf.h"
 #include "conf_board.h"
 #include "conf_clock.h"
+#include "string.h"
 
 /************************************************************************/
 /* Configurações                                                        */
@@ -45,6 +46,9 @@
 #define MASK_LED_RED	(1u << PIN_LED_RED)
 
 void limparvetor(uint8_t *vetor);
+int flagB;
+int flagG;
+int flagR;
 /************************************************************************/
 /* Configura UART                                                       */
 /************************************************************************/
@@ -71,15 +75,15 @@ void config_uart(void){
 /************************************************************************/
 static void display_menu(void)
 {
-	puts(" 1 : exibe novamente esse menu \n\r"
-		 " 2 : Ativa o LED  \n\r"
-		 " 3 : Desliga o LED \n\r ");
+	puts(" M : exibe novamente esse menu \n\r"
+		 " LGON : Ativa o LED  \n\r"
+		 " LGOFF : Desliga o LED \n\r ");
 }
 
 /************************************************************************/
 /* Config PIO                                  */
 /************************************************************************/
-void function(int id, int pin, Pio * port) {
+void functionPIO(int id, int pin, Pio * port) {
 	// 29.17.4 PMC Peripheral Clock Enable Register 0
 	// 1: Enables the corresponding peripheral clock.
 	// ID_PIOA = 11 - TAB 11-1
@@ -92,7 +96,7 @@ void function(int id, int pin, Pio * port) {
 /************************************************************************/
 /* Config TC                                                            */
 /************************************************************************/
-/*
+
 static void configure_tc(void)
 {
 	uint32_t ul_sysclk = sysclk_get_cpu_hz();
@@ -102,7 +106,7 @@ static void configure_tc(void)
 	tc_enable_interrupt(TC0,0,TC_IER_CPCS);
 	NVIC_EnableIRQ(ID_TC0);
 	tc_start(TC0,0);
-}*/
+}
 /************************************************************************/
 /* Função lelitura de dados                                                                     */
 /************************************************************************/
@@ -115,7 +119,7 @@ int readvec(uint8_t *vetor)
 		usart_serial_getchar((Usart *)CONSOLE_UART, (vetor+i));
 		if (*(vetor+i) == '\n')
 		{
-			
+			*(vetor+i) = 0x00;
 			return i;
 		}
 		
@@ -123,6 +127,53 @@ int readvec(uint8_t *vetor)
 	return 0;
 }
 
+/**
+ *  Interrupt handler for TC0 interrupt. 
+ */
+void TC0_Handler(void)
+{
+	volatile uint32_t ul_dummy;
+	
+    /****************************************************************
+	* Devemos indicar ao TC que a interrupção foi satisfeita.
+    ******************************************************************/
+	ul_dummy = tc_get_status(TC0,0);
+
+	if (flagB == 1)
+	{
+		/* Avoid compiler warning */
+		UNUSED(ul_dummy);
+
+		/** Muda o estado do LED */
+		if(pio_get(PIOA,PIO_OUTPUT_0,MASK_LED_BLUE))
+		{
+			pio_clear(PIOA,MASK_LED_BLUE);
+		}
+		else
+		{
+			pio_set(PIOA,MASK_LED_BLUE);
+		}
+
+	
+		if (flagG == 2)
+		{
+
+			/** Muda o estado do LED */
+			if(pio_get(PIOA,PIO_OUTPUT_0,MASK_LED_GREEN))
+			{
+				pio_clear(PIOA,MASK_LED_GREEN);
+			}
+			else
+			{
+				pio_set(PIOA,MASK_LED_GREEN);
+			}
+		}
+	}
+
+}
+	
+	
+	
 /************************************************************************/
 /* Funçao limpar vetor                                                  */
 /************************************************************************/
@@ -155,14 +206,13 @@ int main(void)
 	pmc_enable_periph_clk(ID_LED_BLUE);
 	pio_set_output(PORT_LED_BLUE  , MASK_LED_BLUE	,1,0,0);
 	
-	function(ID_PIOA, PIN_LED_GREEN, PIOA);
-	function(ID_PIOC, PIN_LED_RED, PIOC);
+	functionPIO(ID_PIOA, PIN_LED_GREEN, PIOA);
+	functionPIO(ID_PIOC, PIN_LED_RED, PIOC);
 
 	/* Initialize debug console */
 	config_uart();
-	
-	/* Initialize tc 
-	configure_tc();  */
+	/* Initialize_tc */
+	configure_tc();
 	
 	/* frase de boas vindas */
 	puts(" ---------------------------- \n\r"
@@ -178,26 +228,60 @@ int main(void)
 	while (1) {
 		rtn = readvec(&vetor[0]);
 		if(rtn){
-			
-		}else{
+			printf("[EER]");
+		}
+		else
+		{
 			printf("[ERR ] Quantidade de dados > permitido \n");
 		}
-		switch (*vetor) {
-			
-			case 'M':
-				display_menu();
-				break;
-			case '2':
+	
+			if (strcmp(vetor, "LGON") == 0)
+			{
 				pio_clear(PORT_LED_GREEN, MASK_LED_GREEN);
 				puts("Led ON \n\r");
-				break;
-			case '3' :
+			}
+			else if (strcmp(vetor, "LBPISCA") == 0)
+			{
+			flagB = 1;		
+			}
+			else if (strcmp(vetor, "LGPISCA") == 0)
+			{
+				flagG = 2;
+			}
+			else if (strcmp(vetor, "LBON") == 0)
+			{
+				pio_clear(PORT_LED_BLUE, MASK_LED_BLUE);
+				puts("Led ON \n\r");
+			}
+			else if (strcmp(vetor, "LRON") == 0)
+			{
+				pio_set(PORT_LED_RED, MASK_LED_RED);
+				puts("Led ON \n\r");
+			}
+			else if (strcmp(vetor, "LGOFF") == 0)
+			{
+			pio_set(PORT_LED_GREEN, MASK_LED_GREEN);
+			puts("Led OFF \n\r");	
+			}
+			else if (strcmp(vetor, "LBOFF") == 0)
+			{
 				pio_set(PORT_LED_BLUE, MASK_LED_BLUE);
 				puts("Led OFF \n\r");
-				break;
-			default:
+			}
+			else if (strcmp(vetor, "LROFF") == 0)
+			{
+				pio_clear(PORT_LED_RED, MASK_LED_RED);
+				puts("Led OFF \n\r");
+			}
+			
+			/* more else if clauses */
+			else 
+			{
 				printf("[INFO] Opcao nao definida: %s \n\r", vetor);
-				
-		}	
+			}
+
 	}
 }
+
+
+
