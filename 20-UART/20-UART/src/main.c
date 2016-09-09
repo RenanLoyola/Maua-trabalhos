@@ -68,6 +68,10 @@ void config_uart(void){
 	};
 	
 	stdio_serial_init((Usart *)CONF_UART, &uart_serial_options);
+
+	//UART0->UART_IER = (1);
+	//NVIC_EnableIRQ(ID_UART0);
+
 }
 
 /************************************************************************/
@@ -96,7 +100,6 @@ void functionPIO(int id, int pin, Pio * port) {
 /************************************************************************/
 /* Config TC                                                            */
 /************************************************************************/
-
 static void configure_tc(void)
 {
 	uint32_t ul_sysclk = sysclk_get_cpu_hz();
@@ -107,6 +110,7 @@ static void configure_tc(void)
 	NVIC_EnableIRQ(ID_TC0);
 	tc_start(TC0,0);
 }
+
 /************************************************************************/
 /* Função lelitura de dados                                                                     */
 /************************************************************************/
@@ -172,7 +176,10 @@ void TC0_Handler(void)
 
 }
 	
-	
+void UART0_Handler(void)	{
+	char dadoRx = UART0->UART_RHR;
+	printf("%d", dadoRx);
+}
 	
 /************************************************************************/
 /* Funçao limpar vetor                                                  */
@@ -211,6 +218,7 @@ int main(void)
 
 	/* Initialize debug console */
 	config_uart();
+
 	/* Initialize_tc */
 	configure_tc();
 	
@@ -226,14 +234,10 @@ int main(void)
 	vetor[TAMANHO] = STRING_NULL;
 	
 	while (1) {
+
+		//while(1){};
+
 		rtn = readvec(&vetor[0]);
-		if(rtn){
-			printf("[EER]");
-		}
-		else
-		{
-			printf("[ERR ] Quantidade de dados > permitido \n");
-		}
 	
 			if (strcmp(vetor, "LGON") == 0)
 			{
@@ -242,7 +246,8 @@ int main(void)
 			}
 			else if (strcmp(vetor, "LBPISCA") == 0)
 			{
-			flagB = 1;		
+			flagB = 1;	
+			puts("Pisca LED azul \n\r");	
 			}
 			else if (strcmp(vetor, "LGPISCA") == 0)
 			{
@@ -262,16 +267,33 @@ int main(void)
 			{
 			pio_set(PORT_LED_GREEN, MASK_LED_GREEN);
 			puts("Led OFF \n\r");	
+			flagG = 0 ;
 			}
 			else if (strcmp(vetor, "LBOFF") == 0)
 			{
 				pio_set(PORT_LED_BLUE, MASK_LED_BLUE);
 				puts("Led OFF \n\r");
+				flagB = 0;
 			}
 			else if (strcmp(vetor, "LROFF") == 0)
 			{
 				pio_clear(PORT_LED_RED, MASK_LED_RED);
 				puts("Led OFF \n\r");
+			}
+			else if (strcmp(vetor, "FREQ1") == 0)
+			{
+				tc_write_rc(TC0,0,8000);
+				puts("Frequencia 8000 \n\r");
+			}
+			else if (strcmp(vetor, "FREQ2") == 0)
+			{
+				tc_write_rc(TC0,0,4000);
+				puts("Frequencia 4000 \n\r");
+			}
+			else if (strcmp(vetor, "FREQ3") == 0)
+			{
+				tc_write_rc(TC0,0,2000);
+				puts("Frequencia 2000 \n\r");
 			}
 			
 			/* more else if clauses */
